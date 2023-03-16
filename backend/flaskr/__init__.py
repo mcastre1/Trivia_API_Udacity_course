@@ -16,18 +16,47 @@ def create_app(test_config=None):
     """
     @TODO: Set up CORS. Allow '*' for origins. Delete the sample route after completing the TODOs
     """
+    CORS(app)
 
     """
     @TODO: Use the after_request decorator to set Access-Control-Allow
     """
+    @app.after_request
+    def after_request(response):
+        response.headers.add(
+            "Access-Control-Allow-Headers", "Content-Type,Authorization,true"
+        )
+        response.headers.add(
+            "Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS"
+        )
+        return response
+    
+    # Helper method for paginating questions
+    def paginate_questions(request, selection):
+        page = request.args.get("page", 1, type=int)
+        start = (page - 1) * QUESTIONS_PER_PAGE
+        end = start + QUESTIONS_PER_PAGE
+
+        questions = [question.format() for question in selection]
+        current_questions = questions[start:end]
+
+        return current_questions
 
     """
     @TODO:
     Create an endpoint to handle GET requests
     for all available categories.
     """
+    @app.route('/categories', methods=['GET'])
+    def get_categories():
+        # Create data list of json objects with format method from Category class.
+        data = [category.format() for category in Category.query.all()]
 
-
+        # Return success and data.
+        return jsonify({
+            'success':True,
+            'categories':data
+        })
     """
     @TODO:
     Create an endpoint to handle GET requests for questions,
@@ -40,6 +69,15 @@ def create_app(test_config=None):
     ten questions per page and pagination at the bottom of the screen for three pages.
     Clicking on the page numbers should update the questions.
     """
+    @app.route('/questions', methods=['GET'])
+    def get_questions():
+        questions = paginate_questions(request, Question.query.all())
+
+        return jsonify({
+            'success':True,
+            'questions':questions,
+            'total_questions':len(Question.query.all())
+        })
 
     """
     @TODO:
