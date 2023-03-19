@@ -33,7 +33,8 @@ def create_app(test_config=None):
     
     # Helper method for paginating questions
     def paginate_questions(request, selection):
-        page = request.args.get("page", 1, type=int)
+        page = request.args.get('page', 1, type=int)
+
         start = (page - 1) * QUESTIONS_PER_PAGE
         end = start + QUESTIONS_PER_PAGE
 
@@ -71,16 +72,23 @@ def create_app(test_config=None):
     """
     @app.route('/questions', methods=['GET'])
     def get_questions():
-        questions = paginate_questions(request, Question.query.all())
-        categories = {category.id:category.type for category in Category.query.all()}
+        try:
+            
+            questions = paginate_questions(request, Question.query.all())
+            categories = {category.id:category.type for category in Category.query.all()}
 
-        return jsonify({
-            'success':True,
-            'questions':questions,
-            'total_questions':len(Question.query.all()),
-            'categories': categories,
-            'current_category': None
-        })
+            if questions == 0:
+                abort(404)
+
+            return jsonify({
+                'success':True,
+                'questions':questions,
+                'total_questions':len(Question.query.all()),
+                'categories': categories,
+                'current_category': None
+            })
+        except:
+            abort(400)
 
     """
     @TODO:

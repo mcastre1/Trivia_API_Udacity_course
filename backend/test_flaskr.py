@@ -16,14 +16,14 @@ class TriviaTestCase(unittest.TestCase):
         self.client = self.app.test_client
         self.database_name = "trivia_test"
         self.database_path = "postgres://{}/{}".format('localhost:5432', self.database_name)
-        setup_db(self.app, self.database_path)
+        # setup_db(self.app, self.database_path)
 
-        # binds the app to the current context
-        with self.app.app_context():
-            self.db = SQLAlchemy()
-            self.db.init_app(self.app)
-            # create all tables
-            self.db.create_all()
+        # # binds the app to the current context
+        # with self.app.app_context():
+        #     self.db = SQLAlchemy()
+        #     self.db.init_app(self.app)
+        #     # create all tables
+        #     self.db.create_all()
     
     def tearDown(self):
         """Executed after reach test"""
@@ -33,6 +33,34 @@ class TriviaTestCase(unittest.TestCase):
     TODO
     Write at least one test for each test for successful operation and for expected errors.
     """
+    def test_get_categories(self):
+        res = self.client().get('/categories')
+        data = json.loads(res.data)
+        categories = [category.format() for category in Category.query.all()]
+
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(data['success'], True)
+        self.assertEqual(data['categories'], categories)
+
+    def test_get_paginated_questions(self):
+        res = self.client().get('/questions')
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(data['success'], True)
+        self.assertTrue(data['questions'])
+        self.assertTrue(data['total_questions'])
+
+    def test_get_paginated_questions_error(self):
+        res = self.client().get('/questions?page=10')
+        data = json.loads(res.data)
+
+        print(res.status_code) # This should be 404 but is 200...
+
+
+
+
+
 
 
 # Make the tests conveniently executable
