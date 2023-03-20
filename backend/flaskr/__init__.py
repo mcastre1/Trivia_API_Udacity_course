@@ -16,7 +16,7 @@ def create_app(test_config=None):
     """
     @TODO: Set up CORS. Allow '*' for origins. Delete the sample route after completing the TODOs
     """
-    CORS(app)
+    CORS(app, resources={"/": {"origins": "*"}})
 
     """
     @TODO: Use the after_request decorator to set Access-Control-Allow
@@ -27,7 +27,7 @@ def create_app(test_config=None):
             "Access-Control-Allow-Headers", "Content-Type,Authorization,true"
         )
         response.headers.add(
-            "Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS"
+            "Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS,PATCH"
         )
         return response
     
@@ -51,12 +51,17 @@ def create_app(test_config=None):
     @app.route('/categories', methods=['GET'])
     def get_categories():
         # Create data list of json objects with format method from Category class.
-        data = [category.format() for category in Category.query.all()]
+        #data = [category.format() for category in Category.query.all()]
+        categories = {}
+        
+        for category in Category.query.all():
+            categories[category.id] = category.type
+        
 
         # Return success and data.
         return jsonify({
             'success':True,
-            'categories':data
+            'categories':categories
         })
     """
     @TODO:
@@ -73,20 +78,20 @@ def create_app(test_config=None):
     @app.route('/questions', methods=['GET'])
     def get_questions():
         try:
-            
+            #print(request.args)
             questions = paginate_questions(request, Question.query.all())
             categories = {category.id:category.type for category in Category.query.all()}
 
-            if questions == 0:
+            if not questions:
                 abort(404)
 
             return jsonify({
                 'success':True,
                 'questions':questions,
                 'total_questions':len(Question.query.all()),
-                'categories': categories,
-                'current_category': None
+                'categories': categories
             })
+        # Removed current_category:None
         except:
             abort(400)
 
@@ -186,27 +191,33 @@ def create_app(test_config=None):
     and shown whether they were correct or not.
     """
 
-    app.route('/quizzes', methods=['POST'])
+    @app.route('/quizzes', methods=['POST'])
     def new_question():
+        print("im in")
         body = request.get_json()
         previous_questions = body.get('previous_questions')
         quiz_category = body.get('quiz_category')
 
-        questionslist = []
-
-        if(quiz_category == 0):
+        print(quiz_category)
+        if(quiz_category['id'] == 0):
             questionslist = Question.query.all()
         else:
-            questionslist = Question.get.filter(Question.category == quiz_category).all()
+            questionslist = Question.query.filter(Question.category == quiz_category['id']).all()
 
-        next_question = questionslist[random.randint(0, len(questionslist) - 1)]
+        next_question = random.choice(questionslist).format()
 
-        while next_question.id in previous_questions:
-            next_question = questionslist[random.randint(0, len(questionslist) - 1)]
+        while next_question['id'] in previous_questions:
+            next_question = random.choice(questionslist).format()
 
+            if len(previous_questions) == len(questionslist):
+                return jsonify({
+                    'success': True,
+                    'message': 'done'
+                })
+            
         return ({
             'success':True,
-            'question': next_question.format()
+            'question': next_question
         })
 
     """
@@ -214,6 +225,39 @@ def create_app(test_config=None):
     Create error handlers for all expected errors
     including 404 and 422.
     """
+
+    @app.errorhandler(404)
+    def not_found(error):
+        return jsonify({
+        'success': False,
+        'error': 404,
+        'message': 'Not found.'
+        }), 404
+    
+    @app.errorhandler(400)
+    def bad_request(error):
+        return jsonify({
+        'success': False,
+        'error': 400,
+        'message': 'Bad request'
+        })
+
+
+    @app.errorhandler(422)
+    def unprocessable(error):
+        return jsonify({
+        'success': False,
+        'error': 422, 
+        'message': 'Syntax error.'
+        }), 422
+    
+    @app.errorhandler(500)
+    def internal_server(error):
+        return jsonify({
+        'success': False,
+        'error': 500, 
+        'message': 'Backedn error!.'
+        }), 500
 
     return app
 

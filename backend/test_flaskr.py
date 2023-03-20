@@ -53,10 +53,8 @@ class TriviaTestCase(unittest.TestCase):
 
     def test_get_paginated_questions_error(self):
         res = self.client().get('/questions?page=10')
-        data = json.loads(res.data)
 
-        print(res.status_code) # This should be 404 but is 200...
-
+        self.assertEqual(res.status_code, 400)
 
 
 
