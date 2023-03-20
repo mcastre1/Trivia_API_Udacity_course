@@ -52,17 +52,23 @@ def create_app(test_config=None):
     def get_categories():
         # Create data list of json objects with format method from Category class.
         #data = [category.format() for category in Category.query.all()]
-        categories = {}
+        try:
+            categories = {}
         
-        for category in Category.query.all():
-            categories[category.id] = category.type
-        
+            for category in Category.query.all():
+                categories[category.id] = category.type
 
-        # Return success and data.
-        return jsonify({
-            'success':True,
-            'categories':categories
-        })
+            if len(categories) == 0:
+                abort(404)
+            
+
+            # Return success and data.
+            return jsonify({
+                'success':True,
+                'categories':categories
+            })
+        except:
+            abort(400)
     """
     @TODO:
     Create an endpoint to handle GET requests for questions,
@@ -104,12 +110,22 @@ def create_app(test_config=None):
     """
     @app.route('/questions/<int:id>', methods=['DELETE'])
     def delete_question(id):
-        question = Question.query.get(id)
-        question.delete()
+        # Send a request to delete a question with id.
+        try:
+            question = Question.query.get(id)
 
-        return jsonify({
+            if question == None:
+                abort(404)
+
+            question.delete()
+
+            return jsonify({
             'success':True
-        })
+            })
+        except:
+            abort(400)
+
+        
     """
     @TODO:
     Create an endpoint to POST a new question,
@@ -120,7 +136,8 @@ def create_app(test_config=None):
     the form will clear and the question will appear at the end of the last page
     of the questions list in the "List" tab.
     """
-
+    # For the Post new question I decided to do both POST in the same route but check for the parameter 'search'
+    # Please see the route below.
     """
     @TODO:
     Create a POST endpoint to get questions based on a search term.
@@ -131,35 +148,40 @@ def create_app(test_config=None):
     only question that include that string within their question.
     Try using the word "title" to start.
     """
+    # For the Post new question I decided to do both POST in the same route but check for the parameter 'search'
     @app.route('/questions', methods=['POST'])
     def create_question():
         body = request.get_json()
+        try:
+        # Here is where we decide if we are searching or creating a new question
+        # Here we create a new question
+            if not 'searchTerm' in body:
+                question = body.get('question')
+                answer = body.get('answer')
+                difficulty = body.get('difficulty')
+                category = body.get('category')
 
-        if not 'searchTerm' in body:
-            question = body.get('question')
-            answer = body.get('answer')
-            difficulty = body.get('difficulty')
-            category = body.get('category')
+                new_question = Question(question=question, answer=answer, difficulty=difficulty, category=category)
+                new_question.insert()
 
-            new_question = Question(question=question, answer=answer, difficulty=difficulty, category=category)
-            new_question.insert()
+                return jsonify({
+                    'success':True
+                })
+            else: # AND here is where we search for questions with a substring.
+                searchTerm = body.get('searchTerm')
+                questions = Question.query.filter(Question.question.ilike(f'%{searchTerm}%')).all()
 
-            return jsonify({
-                'success':True
-            })
-        else:
-            searchTerm = body.get('searchTerm')
-            questions = Question.query.filter(Question.question.ilike(f'%{searchTerm}%')).all()
+                if len(questions) == 0:
+                    abort(404)
 
-            return jsonify({
-                'success':True,
-                'questions':[question.format() for question in questions],
-                'totalQuestions': len(questions),
-                'currentCategory': None
-            })
-
-
-    
+                return jsonify({
+                    'success':True,
+                    'questions':[question.format() for question in questions],
+                    'totalQuestions': len(questions),
+                    'currentCategory': None
+                })
+        except:
+            abort(400)
 
     """
     @TODO:
@@ -171,14 +193,21 @@ def create_app(test_config=None):
     """
     @app.route('/categories/<int:id>/questions', methods=['GET'])
     def get_questions_by_category(id):
-        questions = Question.query.filter(Question.category == id).all()
+        # Get all questions with the given category id.
+        try:
+            questions = Question.query.filter(Question.category == id).all()
 
-        return jsonify({
-            'success': True,
-            'questions': [question.format() for question in questions],
-            'total_questions': len(questions),
-            'current_category':id
-        })
+            if len(questions) == 0:
+                abort(404)
+
+            return jsonify({
+                'success': True,
+                'questions': [question.format() for question in questions],
+                'total_questions': len(questions),
+                'current_category':id
+            })
+        except:
+            abort(400)
     """
     @TODO:
     Create a POST endpoint to get questions to play the quiz.
@@ -193,32 +222,39 @@ def create_app(test_config=None):
 
     @app.route('/quizzes', methods=['POST'])
     def new_question():
-        print("im in")
-        body = request.get_json()
-        previous_questions = body.get('previous_questions')
-        quiz_category = body.get('quiz_category')
+        try:
+            body = request.get_json()
+            previous_questions = body.get('previous_questions')
+            quiz_category = body.get('quiz_category')
 
-        print(quiz_category)
-        if(quiz_category['id'] == 0):
-            questionslist = Question.query.all()
-        else:
-            questionslist = Question.query.filter(Question.category == quiz_category['id']).all()
+            # Id of zero means the user chose all in categories.
+            if(quiz_category['id'] == 0):
+                questionslist = Question.query.all()
+            else: # Else we get all questions sharing the same category id as passed in
+                questionslist = Question.query.filter(Question.category == quiz_category['id']).all()
 
-        next_question = random.choice(questionslist).format()
-
-        while next_question['id'] in previous_questions:
+            
+            # We get a next question from the questionlist.
             next_question = random.choice(questionslist).format()
 
-            if len(previous_questions) == len(questionslist):
-                return jsonify({
-                    'success': True,
-                    'message': 'done'
-                })
-            
-        return ({
-            'success':True,
-            'question': next_question
-        })
+            # If the new question has already been chosen before, then we continue to request for a new one
+            # until we have gone through all the questions in questionslist.
+            while next_question['id'] in previous_questions:
+                next_question = random.choice(questionslist).format()
+
+                # If we have been through all questions then we can finish, and decide if we want to play again or not.
+                if len(previous_questions) == len(questionslist):
+                    return jsonify({
+                        'success': True,
+                        'message': 'done'
+                    })
+                
+            return ({
+                'success':True,
+                'question': next_question
+            })
+        except:
+            abort(400)
 
     """
     @TODO:
@@ -240,7 +276,7 @@ def create_app(test_config=None):
         'success': False,
         'error': 400,
         'message': 'Bad request'
-        })
+        }), 400
 
 
     @app.errorhandler(422)

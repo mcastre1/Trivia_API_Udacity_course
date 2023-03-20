@@ -36,7 +36,10 @@ class TriviaTestCase(unittest.TestCase):
     def test_get_categories(self):
         res = self.client().get('/categories')
         data = json.loads(res.data)
-        categories = [category.format() for category in Category.query.all()]
+        categories = {}
+
+        for category in Category.query.all():
+            categories[f'{category.id}'] = category.type
 
         self.assertEqual(res.status_code, 200)
         self.assertEqual(data['success'], True)
@@ -53,9 +56,35 @@ class TriviaTestCase(unittest.TestCase):
 
     def test_get_paginated_questions_error(self):
         res = self.client().get('/questions?page=10')
+        data = json.loads(res.data)
 
         self.assertEqual(res.status_code, 400)
+        self.assertEqual(data['success'], False)
 
+    def test_delete_question(self):
+        res = self.client().delete('/questions/6')
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(data['success'], True)
+
+    def test_delete_question_error(self):
+        res = self.client().delete('/questions/1000')
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(data['success'], False)
+
+    def test_search_question(self):
+        res = self.client().post('/questions', data={'searchTerm': 'title'})
+        data = json.loads(res.data)
+
+        self.assertEqual(data['success'], True)
+        self.assertTrue(data['questions'])
+        self.assertTrue(data['total_questions'])
+
+
+        
 
 
 
