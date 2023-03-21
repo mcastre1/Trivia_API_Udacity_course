@@ -171,7 +171,7 @@ def create_app(test_config=None):
                 searchTerm = body.get('searchTerm')
                 questions = Question.query.filter(Question.question.ilike(f'%{searchTerm}%')).all()
 
-                if len(questions) == 0:
+                if questions == []:
                     abort(404)
 
                 return jsonify({
@@ -261,15 +261,6 @@ def create_app(test_config=None):
     Create error handlers for all expected errors
     including 404 and 422.
     """
-
-    @app.errorhandler(404)
-    def not_found(error):
-        return jsonify({
-        'success': False,
-        'error': 404,
-        'message': 'Not found.'
-        }), 404
-    
     @app.errorhandler(400)
     def bad_request(error):
         return jsonify({
@@ -277,7 +268,14 @@ def create_app(test_config=None):
         'error': 400,
         'message': 'Bad request'
         }), 400
-
+    
+    @app.errorhandler(404)
+    def not_found(error):
+        return jsonify({
+        'success': False,
+        'error': 404,
+        'message': 'Not found.'
+        }), 404
 
     @app.errorhandler(422)
     def unprocessable(error):
