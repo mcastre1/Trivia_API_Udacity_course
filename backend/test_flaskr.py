@@ -15,7 +15,8 @@ class TriviaTestCase(unittest.TestCase):
         self.app = create_app()
         self.client = self.app.test_client
         self.database_name = "trivia_test"
-        self.database_path = "postgres://{}/{}".format('localhost:5432', self.database_name)
+        self.database_path = "postgres://{}/{}".format(
+            'localhost:5432', self.database_name)
         # setup_db(self.app, self.database_path)
 
         # # binds the app to the current context
@@ -24,15 +25,17 @@ class TriviaTestCase(unittest.TestCase):
         #     self.db.init_app(self.app)
         #     # create all tables
         #     self.db.create_all()
-    
+
     def tearDown(self):
         """Executed after reach test"""
         pass
 
     """
     TODO
-    Write at least one test for each test for successful operation and for expected errors.
+    Write at least one test for each test
+    for successful operation and for expected errors.
     """
+
     def test_get_categories(self):
         res = self.client().get('/categories')
         data = json.loads(res.data)
@@ -62,8 +65,15 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(data['success'], False)
 
     def test_delete_question(self):
-        # Change the number 6 every time this test is being used.
-        res = self.client().delete('/questions/6')
+        # we first create a temp question:
+        question = Question(
+            question="Test question",
+            answer="test answer",
+            category=2,
+            difficulty=2)
+        question.insert()
+
+        res = self.client().delete(f'/questions/{question.id}')
         data = json.loads(res.data)
 
         self.assertEqual(data['success'], True)
@@ -81,7 +91,7 @@ class TriviaTestCase(unittest.TestCase):
 
         self.assertEqual(data['success'], True)
         self.assertTrue(data['questions'])
-        self.assertTrue(data['total_questions'])
+        self.assertTrue(data['totalQuestions'])
 
     def test_search_question_error(self):
         res = self.client().post('/questions', json={'searchTerm': '.'})
@@ -91,23 +101,23 @@ class TriviaTestCase(unittest.TestCase):
 
     def test_create_question(self):
         new_question = {
-        'question': 'Whats the my name?',
-        'answer': 'Miguel',
-        'category': '1',
-        'difficulty': 4,
+            'question': 'Whats the my name?',
+            'answer': 'Miguel',
+            'category': '1',
+            'difficulty': 4,
         }
 
         res = self.client().post('/questions', json=new_question)
         data = json.loads(res.data)
 
         self.assertEqual(data['success'], True)
-    
+
     def test_create_question_error(self):
         new_question = {
-        'question': 'Whats the oposite of black?',
-        'category': '...',
-        'answer':'',
-        'difficulty': '.',
+            'question': 'Whats the oposite of black?',
+            'category': '...',
+            'answer': '',
+            'difficulty': '.',
         }
 
         res = self.client().post('/questions', json=new_question)
@@ -115,17 +125,22 @@ class TriviaTestCase(unittest.TestCase):
 
         self.assertEqual(data['success'], False)
 
+    def test_question_by_category(self):
+        res = self.client().get('categories/4/questions')
+        data = json.loads(res.data)
+
+        self.assertEqual(data['success'], True)
 
     def test_question_by_category_error(self):
         # No category exists with id 1000
-        res = self.client().get('categories/1000/questions')
+        res = self.client().get('categories/10000/questions')
         data = json.loads(res.data)
 
         self.assertEqual(data['success'], False)
 
     def test_play_quiz(self):
         input_data = {
-            'previous_questions':[20, 21],
+            'previous_questions': [20, 21],
             'quiz_category': {
                 'id': 1,
                 'type': 'Science'
@@ -144,11 +159,19 @@ class TriviaTestCase(unittest.TestCase):
 
         self.assertEqual(data['question']['category'], 1)
 
+    def test_play_quiz_error(self):
+        input_data = {
+            'previous_questions': ['.', '2', '^'],
+            'quiz_category': {
+                'id': '5k',
+                'type': 'Science'
+            }
+        }
 
-        
+        res = self.client().post('/quizzes', json=input_data)
+        data = json.loads(res.data)
 
-
-
+        self.assertEqual(data['success'], False)
 
 
 # Make the tests conveniently executable
